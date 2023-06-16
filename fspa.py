@@ -5,7 +5,7 @@ from automata import Fsa
 from typing import Dict
 import re
 from random import choice
-
+import sympy as sp
 
 class State:
     pass
@@ -20,6 +20,9 @@ class PredicateEvaluationResult:
 
     def __or__(self, other):
         return PredicateEvaluationResult(max(self.result, other.result))
+
+    def __invert__(self):
+        return PredicateEvaluationResult(-self.result)
 
     def get_result(self):
         return self.result
@@ -54,7 +57,7 @@ class Fspa(Fsa):
         # Convert logic connectives
         guard = re.sub(r'\&\&', '&', guard)
         guard = re.sub(r'\|\|', '|', guard)
-
+        #guard = re.sub(r'~', '!', guard)
         used_pds = []
         for key in self.PREDICATE_DICT.keys():
             guard = re.sub(r'\b{}\b'.format(key),
@@ -62,6 +65,29 @@ class Fspa(Fsa):
                            guard)
         print(guard)
         return eval(guard).get_result()
+
+    def guard_from_bitmaps(self, bitmaps: set):
+        guard_expr: str = ''
+        len_prop = len(self.props)
+        for counter, conjunction in enumerate(bitmaps):
+            guard_expr +='('
+            for counter_d, prop in enumerate(self.props):
+                if self.props[prop] & conjunction:
+                    guard_expr += prop
+                else:
+                    guard_expr += '~'
+                    guard_expr += prop
+                if counter_d < (len_prop - 1):
+                    guard_expr += ' & '
+
+            guard_expr += ')'
+            if counter < (len(bitmaps) - 1):
+                guard_expr += '|'
+
+        print(guard_expr)
+        dnf_expr = sp.simplify_logic(guard_expr, 'dnf')
+        print(dnf_expr)
+        return guard_expr
 
     def compute_edge_guard(self, edge, s: State):
         return self.compute_guard(edge['guard'], s)
@@ -102,9 +128,10 @@ def test_fsa(pds):
     for spec in specs:
         aut = Fspa('Fspa', predicates=pds)
         aut.from_formula(spec)
-        b =aut.compute_guard('((a) && (b) || (c) || (c) && (b))', State)
-        print(b)
-        print(aut)
+        exp = aut.guard_from_bitmaps({1, 7, 2, 3, 4})
+        p = aut.compute_guard(exp, State)
+        print(p)
+
 
 
 if __name__ == "__main__":
@@ -114,7 +141,7 @@ if __name__ == "__main__":
     b = PredicateEvaluationResult(6)
     c = PredicateEvaluationResult(1)
 
-    print((a & (c | PredicateEvaluationResult(1))).get_result())
+
     test_fsa(pds)
 
 

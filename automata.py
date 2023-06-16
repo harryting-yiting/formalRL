@@ -129,7 +129,7 @@ Edges: {edges}
         # Convert logic connectives
         guard = re.sub(r'\&\&', '&', guard)
         guard = re.sub(r'\|\|', '|', guard)
-
+        print(eval(guard))
         return eval(guard)
 
     def guard_from_bitmaps(self, bitmaps):
@@ -351,7 +351,7 @@ class Fsa(Automaton):
             lines = sp.check_output(shlex.split(ltl2fsa.format(formula=formula))).decode(spot_output_encoding)
         except Exception as ex:
             raise Exception(__name__, "Problem running ltl2tgba: '{}'".format(ex))
-        automaton_from_spin(self, formula, lines)
+        automaton_from_spin(self, formula, lines, self.props.keys())
         # We expect a deterministic FSA
         assert(len(self.init)==1)
 
@@ -633,7 +633,7 @@ class Rabin(Automaton):
         return len(trap_states - set(['virtual'])) == 0
 
 
-def automaton_from_spin(aut, formula, lines):
+def automaton_from_spin(aut, formula, lines, props: list = []):
     '''TODO:
     '''
     lines = [x.strip() for x in lines.splitlines()]
@@ -641,12 +641,15 @@ def automaton_from_spin(aut, formula, lines):
     # Get the set of propositions
     # Replace operators [], <>, X, !, (, ), &&, ||, U, ->, <-> G, F, X, R, V
     # with white-space
-    props = re.sub(r'[\[\]<>X!\(\)\-&|UGFRV]', ' ', formula)
-    # Replace true and false with white space
-    props = re.sub(r'\btrue\b', ' ', props)
-    props = re.sub(r'\bfalse\b', ' ', props)
-    # What remains are propositions separated by whitespaces
-    props = set(props.strip().split())
+    if not len(props) != 0:
+        props = re.sub(r'[\[\]<>X!\(\)\-&|UGFRV]', ' ', formula)
+        # Replace true and false with white space
+        props = re.sub(r'\btrue\b', ' ', props)
+        props = re.sub(r'\bfalse\b', ' ', props)
+        # What remains are propositions separated by whitespaces
+        props = set(props.strip().split())
+    else:
+        props = set(props)
 
     # Form the bitmap dictionary of each proposition
     # Note: range goes upto rhs-1
