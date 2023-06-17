@@ -98,14 +98,14 @@ class Fspa(Fsa):
         return node
 
     def copy_from_fsa(self, fsa: Fsa):
-        self.g = fsa.copy()
+        self.g = fsa.g.copy()
         self.init = dict(fsa.init)
         self.final = set(fsa.final)
         return
 
     def determinize(self):
         fsa = super().determinize()
-        fspa = Fspa(self.PREDICATE_DICT)
+        fspa = Fspa(self.name, self.PREDICATE_DICT)
         fspa.copy_from_fsa(fsa)
         return fspa
 
@@ -118,6 +118,9 @@ def test_fsa(pds):
         exp = aut.guard_from_bitmaps({1, 7, 2, 3, 4})
         print(exp)
         p = aut.compute_guard(exp, State)
+        print(aut)
+        auto2 = aut.determinize()
+        print(auto2)
         print(p)
 
 

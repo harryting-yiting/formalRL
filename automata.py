@@ -463,21 +463,23 @@ class Fsa(Automaton):
         # Discover states and transitions
         stack = [0]
         done = set()
+        done.add(0)
         while stack:
             cur_state_i = stack.pop()
             cur_state_set = state_map[cur_state_i]
             next_states = dict()
             for cur_state in cur_state_set:
-                for _,next_state,data in self.g.out_edges_iter(cur_state, True):
-                    inp = next(iter(data['input']))
-                    if inp not in next_states:
-                        next_states[inp] = set()
-                    next_states[inp].add(next_state)
+                for _, next_state, data in self.g.out_edges_iter(cur_state, True):
+                    for inp in data['input']:
+                        if inp not in next_states:
+                            next_states[inp] = set()
+                        next_states[inp].add(next_state)
 
             for inp,next_state_set in next_states.items():
                 if next_state_set not in state_map:
                     state_map.append(next_state_set)
                 next_state_i = state_map.index(next_state_set)
+                # TODO: Simplify edge
                 attr_dict = {'weight': 0, 'label':inp, 'input':set([inp]), 'guard': self.guard_from_bitmaps(set([inp]))}
                 det.g.add_edge(cur_state_i, next_state_i, **attr_dict)
                 if next_state_i not in done:
