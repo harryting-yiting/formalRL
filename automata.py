@@ -29,6 +29,7 @@ import networkx as nx
 
 from model import Model
 from functools import reduce
+from sympy import simplify_logic
 
 # Logger configuration
 logger = logging.getLogger(__name__)
@@ -129,14 +130,28 @@ Edges: {edges}
         # Convert logic connectives
         guard = re.sub(r'\&\&', '&', guard)
         guard = re.sub(r'\|\|', '|', guard)
-        print(eval(guard))
         return eval(guard)
 
-    def guard_from_bitmaps(self, bitmaps):
-        """
-        Creates a the guard Boolean formula as a string from the bitmap.
-        """
-        return '' #TODO: implement
+    def guard_from_bitmaps(self, bitmaps: set):
+        guard_expr: str = ''
+        len_prop = len(self.props)
+        for counter, conjunction in enumerate(bitmaps):
+            guard_expr +='('
+            for counter_d, prop in enumerate(self.props):
+                if self.props[prop] & conjunction:
+                    guard_expr += prop
+                else:
+                    guard_expr += '~'
+                    guard_expr += prop
+                if counter_d < (len_prop - 1):
+                    guard_expr += ' & '
+
+            guard_expr += ')'
+            if counter < (len(bitmaps) - 1):
+                guard_expr += '|'
+
+        dnf_expr = simplify_logic(guard_expr, 'dnf')
+        return str(dnf_expr)
 
     def symbols_w_prop(self, prop):
         """
@@ -351,7 +366,7 @@ class Fsa(Automaton):
             lines = sp.check_output(shlex.split(ltl2fsa.format(formula=formula))).decode(spot_output_encoding)
         except Exception as ex:
             raise Exception(__name__, "Problem running ltl2tgba: '{}'".format(ex))
-        automaton_from_spin(self, formula, lines, self.props.keys())
+        automaton_from_spin(self, formula, lines, list(self.props.keys()))
         # We expect a deterministic FSA
         assert(len(self.init)==1)
 
@@ -463,7 +478,7 @@ class Fsa(Automaton):
                 if next_state_set not in state_map:
                     state_map.append(next_state_set)
                 next_state_i = state_map.index(next_state_set)
-                attr_dict = {'weight':0, 'label':inp, 'input':set([inp])}
+                attr_dict = {'weight': 0, 'label':inp, 'input':set([inp]), 'guard': self.guard_from_bitmaps(set([inp]))}
                 det.g.add_edge(cur_state_i, next_state_i, **attr_dict)
                 if next_state_i not in done:
                     stack.append(next_state_i)
@@ -637,7 +652,6 @@ def automaton_from_spin(aut, formula, lines, props: list = []):
     '''TODO:
     '''
     lines = [x.strip() for x in lines.splitlines()]
-
     # Get the set of propositions
     # Replace operators [], <>, X, !, (, ), &&, ||, U, ->, <-> G, F, X, R, V
     # with white-space
@@ -648,8 +662,6 @@ def automaton_from_spin(aut, formula, lines, props: list = []):
         props = re.sub(r'\bfalse\b', ' ', props)
         # What remains are propositions separated by whitespaces
         props = set(props.strip().split())
-    else:
-        props = set(props)
 
     # Form the bitmap dictionary of each proposition
     # Note: range goes upto rhs-1

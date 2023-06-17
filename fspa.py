@@ -10,7 +10,6 @@ import sympy as sp
 class State:
     pass
 
-
 class PredicateEvaluationResult:
     def __init__(self, result: float):
         self.result = result
@@ -44,7 +43,8 @@ class Predicate:
 class Fspa(Fsa):
 
     def __init__(self, name="Fspa", predicates: Dict[str, Predicate] = None, multi=True):
-        super().__init__(name, predicates.keys(), multi)
+        super().__init__(name, list(predicates.keys()), multi)
+        print(list(predicates.keys()))
         self.PREDICATE_DICT = predicates  # const
 
     def compute_guard(self, guard: str, s: State):
@@ -63,31 +63,7 @@ class Fspa(Fsa):
             guard = re.sub(r'\b{}\b'.format(key),
                            "self.PREDICATE_DICT['{}'].evaluate(s)".format(key),
                            guard)
-        print(guard)
         return eval(guard).get_result()
-
-    def guard_from_bitmaps(self, bitmaps: set):
-        guard_expr: str = ''
-        len_prop = len(self.props)
-        for counter, conjunction in enumerate(bitmaps):
-            guard_expr +='('
-            for counter_d, prop in enumerate(self.props):
-                if self.props[prop] & conjunction:
-                    guard_expr += prop
-                else:
-                    guard_expr += '~'
-                    guard_expr += prop
-                if counter_d < (len_prop - 1):
-                    guard_expr += ' & '
-
-            guard_expr += ')'
-            if counter < (len(bitmaps) - 1):
-                guard_expr += '|'
-
-        print(guard_expr)
-        dnf_expr = sp.simplify_logic(guard_expr, 'dnf')
-        print(dnf_expr)
-        return guard_expr
 
     def compute_edge_guard(self, edge, s: State):
         return self.compute_guard(edge['guard'], s)
@@ -121,6 +97,17 @@ class Fspa(Fsa):
             node = choice(self.g.nodes())
         return node
 
+    def copy_from_fsa(self, fsa: Fsa):
+        self.g = fsa.copy()
+        self.init = dict(fsa.init)
+        self.final = set(fsa.final)
+        return
+
+    def determinize(self):
+        fsa = super().determinize()
+        fspa = Fspa(self.PREDICATE_DICT)
+        fspa.copy_from_fsa(fsa)
+        return fspa
 
 def test_fsa(pds):
     specs = ['F a && F !b']
@@ -129,9 +116,9 @@ def test_fsa(pds):
         aut = Fspa('Fspa', predicates=pds)
         aut.from_formula(spec)
         exp = aut.guard_from_bitmaps({1, 7, 2, 3, 4})
+        print(exp)
         p = aut.compute_guard(exp, State)
         print(p)
-
 
 
 if __name__ == "__main__":
