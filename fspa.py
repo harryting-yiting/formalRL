@@ -57,7 +57,7 @@ class Fspa(Fsa):
         # Convert logic connectives
         guard = re.sub(r'\&\&', '&', guard)
         guard = re.sub(r'\|\|', '|', guard)
-        #guard = re.sub(r'~', '!', guard)
+        guard = re.sub(r'!', '~', guard)
         used_pds = []
         for key in self.PREDICATE_DICT.keys():
             guard = re.sub(r'\b{}\b'.format(key),
@@ -71,6 +71,7 @@ class Fspa(Fsa):
     def compute_node_outgoing(self, q, s: State):
         guards = []
         for _, v, d in self.g.out_edges_iter(q, data=True):
+            print(d)
             guards.append(self.compute_edge_guard(d, s))
         # end state
         max_value = max(guards)
@@ -122,6 +123,12 @@ def test_fsa(pds):
         auto2 = aut.determinize()
         print(auto2)
         print(p)
+        auto2 = aut
+        node = auto2.get_random_non_final_node()
+        value = auto2.compute_node_outgoing(node, State)
+        print(node)
+        print(auto2.g.edges())
+        print(value)
 
 
 if __name__ == "__main__":

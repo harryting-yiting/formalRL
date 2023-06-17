@@ -479,7 +479,7 @@ class Fsa(Automaton):
                 if next_state_set not in state_map:
                     state_map.append(next_state_set)
                 next_state_i = state_map.index(next_state_set)
-                # TODO: Simplify edge
+                # TODO: simplify edge number
                 attr_dict = {'weight': 0, 'label':inp, 'input':set([inp]), 'guard': self.guard_from_bitmaps(set([inp]))}
                 det.g.add_edge(cur_state_i, next_state_i, **attr_dict)
                 if next_state_i not in done:
