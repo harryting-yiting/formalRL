@@ -1,6 +1,6 @@
-import random
+#import random
 
-from model import Model
+#from model import Model
 from automata import Fsa
 from typing import Dict
 import re
@@ -60,6 +60,8 @@ class Fspa(Fsa):
         guard = re.sub(r'!', '~', guard)
         used_pds = []
         for key in self.PREDICATE_DICT.keys():
+            # The predicate may have internal state, but the best practice is not having
+            # TODO: make restrictions on the internal state
             guard = re.sub(r'\b{}\b'.format(key),
                            "self.PREDICATE_DICT['{}'].evaluate(s)".format(key),
                            guard)

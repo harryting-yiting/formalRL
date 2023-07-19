@@ -133,6 +133,10 @@ Edges: {edges}
         return eval(guard)
 
     def guard_from_bitmaps(self, bitmaps: set):
+        """
+        Author: Yiting He
+        Transform bitmaps into guards
+        """
         guard_expr: str = ''
         len_prop = len(self.props)
         for counter, conjunction in enumerate(bitmaps):
