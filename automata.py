@@ -185,7 +185,7 @@ Edges: {edges}
         # Get the bitmap representation of props
         prop_bitmap = self.bitmap_of_props(props)
         # Return an array of next states
-        return [v for _, v, d in self.g.out_edges_iter(q, data=True)
+        return [v for _, v, d in self.g.out_edges(q, data=True)
                                                    if prop_bitmap in d['input']]
 
     def next_state(self, q, props):
@@ -198,7 +198,7 @@ Edges: {edges}
         # Get the bitmap representation of props
         prop_bitmap = self.bitmap_of_props(props)
         # Return an array of next states
-        nq = [v for _, v, d in self.g.out_edges_iter(q, data=True)
+        nq = [v for _, v, d in self.g.out_edges(q, data=True)
                                                    if prop_bitmap in d['input']]
         assert len(nq) <= 1
         if nq:
@@ -260,7 +260,7 @@ Edges: {edges}
         trap_added = False
         for s in self.g:
             rem_alphabet = set(self.alphabet)
-            for _, _, d in self.g.out_edges_iter(s, data=True):
+            for _, _, d in self.g.out_edges(s, data=True):
                 rem_alphabet -= d['input']
             if rem_alphabet:
                 if not trap_added: #'trap' not in self.g:
@@ -473,7 +473,7 @@ class Fsa(Automaton):
             cur_state_set = state_map[cur_state_i]
             next_states = dict()
             for cur_state in cur_state_set:
-                for _, next_state, data in self.g.out_edges_iter(cur_state, True):
+                for _, next_state, data in self.g.out_edges(cur_state, True):
                     for inp in data['input']:
                         if inp not in next_states:
                             next_states[inp] = set()
@@ -494,7 +494,7 @@ class Fsa(Automaton):
         # All edges of all states must be deterministic
         for state in det.g:
             ins = set()
-            for _, _, d in det.g.out_edges_iter(state, True):
+            for _, _, d in det.g.out_edges(state, True):
                 assert len(d['input']) == 1
                 inp = next(iter(d['input']))
                 if inp in ins:
@@ -699,12 +699,16 @@ def automaton_from_spin(aut, formula, lines, props: list = []):
             # Add edge
             transition_data = {'weight': 0, 'input': bitmaps,
                                'guard' : guard, 'label': guard}
-            aut.g.add_edge(this_state, next_state, attr_dict=transition_data)
+            # test
+            # aut.g.add_edge(this_state, next_state, attr_dict=transition_data)
+            aut.g.add_edge(this_state, next_state, **transition_data)
         elif line[0:4] == 'skip':
             # Add self-looping edge
             transition_data = {'weight': 0, 'input': aut.alphabet,
                                'guard' : '(1)', 'label': '(1)'}
-            aut.g.add_edge(this_state, this_state, attr_dict=transition_data)
+            # test
+            #aut.g.add_edge(this_state, this_state, attr_dict=transition_data)
+            aut.g.add_edge(this_state, this_state, **transition_data)
         else:
             this_state = line[0:-1]
             # Add state

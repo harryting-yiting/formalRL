@@ -72,8 +72,7 @@ class Fspa(Fsa):
 
     def compute_node_outgoing(self, q, s: State):
         guards = []
-        for _, v, d in self.g.out_edges_iter(q, data=True):
-            print(d)
+        for _, v, d in self.g.out_edges(q, data=True):
             guards.append(self.compute_edge_guard(d, s))
         # end state
         max_value = max(guards)
@@ -81,7 +80,7 @@ class Fspa(Fsa):
         return max_value, max_index
 
     def next_states_from_mdp_state(self, q, s: State) -> list:
-        return [v for _, v, d in self.g.out_edges_iter(q, data=True) if self.compute_edge_guard(d, s)]
+        return [v for _, v, d in self.g.out_edges(q, data=True) if self.compute_edge_guard(d, s)]
 
     def next_state_from_mdp_state(self, q, s: State):
         nq = self.next_states_from_State(q, s)
@@ -95,9 +94,9 @@ class Fspa(Fsa):
         return [ini_nodes]
 
     def get_random_non_final_node(self):
-        node = choice(self.g.nodes())
+        node = choice(list(self.g.nodes))
         while node in self.final:
-            node = choice(self.g.nodes())
+            node = choice(list(self.g.nodes()))
         return node
 
     def copy_from_fsa(self, fsa: Fsa):
@@ -130,6 +129,7 @@ def test_fsa(pds):
         value = auto2.compute_node_outgoing(node, State)
         print(node)
         print(auto2.g.edges())
+        print(aut.g.edges())
         print(value)
 
 
