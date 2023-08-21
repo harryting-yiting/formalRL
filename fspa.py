@@ -1,14 +1,16 @@
-#import random
+# import random
 
-#from model import Model
+# from model import Model
 from automata import Fsa
 from typing import Dict
 import re
 from random import choice
 import sympy as sp
 
+
 class State:
     pass
+
 
 class PredicateEvaluationResult:
     def __init__(self, result: float):
