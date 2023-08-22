@@ -25,10 +25,15 @@ class PredicateEvaluationResult:
         return PredicateEvaluationResult(max(self.result, other.result))
 
     def __invert__(self):
+        if self.result == 0:
+            return PredicateEvaluationResult(0.00001)
         return PredicateEvaluationResult(-self.result)
 
     def get_result(self):
         return self.result
+
+    def get_result_binary(self):
+        return self.result > 0
 
 
 class Predicate:
@@ -68,7 +73,10 @@ class Fspa(Fsa):
             guard = re.sub(r'\b{}\b'.format(key),
                            "self.PREDICATE_DICT['{}'].evaluate(s)".format(key),
                            guard)
-        return eval(guard).get_result()
+        print("guard")
+        print(guard)
+        print(eval(guard).get_result_binary())
+        return eval(guard).get_result_binary()
 
     def compute_edge_guard(self, edge, s: State):
         return self.compute_guard(edge['guard'], s)
@@ -96,14 +104,16 @@ class Fspa(Fsa):
         return [v for _, v, d in self.g.out_edges(q, data=True) if self.compute_edge_guard(d, s)]
 
     def next_state_from_mdp_state(self, q, s: State):
-        nq = self.next_states_from_State(q, s)
+        nq = self.next_states_from_mdp_state(q, s)
+        print('length next q')
+        print(len(nq))
         assert len(nq) <= 1
         if nq:
             return nq[0]
         return None
 
-    def get_init_nodes(self) -> set:
-        return set(self.init.keys())
+    def get_init_nodes(self) -> list:
+        return list(self.init.keys())
 
     def get_random_non_final_node(self):
         node = choice(list(self.g.nodes))

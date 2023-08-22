@@ -12,7 +12,7 @@ class MinigridState(State):
 	def __init__(self, state: minigrid_env):
 		self.state = state
 
-	def get_state(self)->minigrid_env:
+	def get_state(self) -> minigrid_env:
 		return self.state
 
 
@@ -34,7 +34,7 @@ class PositionPredicate(Predicate):
 
 	def evaluate(self, s: MinigridState) -> PredicateEvaluationResult:
 		env: minigrid_env = s.get_state()  # type: minigrid_env
-		current_position  = np.array(env.agent_pos)
+		current_position = np.array(env.agent_pos)
 		distance = numpy.linalg.norm(self.target_ps - current_position)
 		return PredicateEvaluationResult(distance)
 
@@ -55,8 +55,11 @@ class TltlWrapper(Wrapper):
 		super().__init__(env)
 		self.fspa = Fspa(predicates=predicates)
 		self.fspa.from_formula(tltl)
-		self.fspa.remove_trap_states()
+		trap = self.fspa.remove_trap_states()
+		print(trap)
+		print(self.fspa)
 		self.fspa.determinize()
+		print(self.fspa)
 		# wrapper saved variables
 		self.current_p = self.fspa.get_init_nodes()[0]  # current fspa state
 
@@ -68,13 +71,13 @@ class TltlWrapper(Wrapper):
 		return self.observation(obs), info
 
 	def step(self, action):
-
 		obs, reward, terminated, truncated, info = self.env.step(action)
-
+		print('step')
 		# compute the reward  = the minimal q given next state
-		reward, edge_index = self.fspa.compute_node_outgoing_without_uc_self(self, self.current_p, MinigridState(self.env))
-
 		next_p = self.fspa.next_state_from_mdp_state(self.current_p, MinigridState(self.env))
+		reward, edge_index = self.fspa.compute_node_outgoing_without_uc_self(self.current_p, MinigridState(self.env))
+
+
 		# if next_q is final state
 		if next_p in self.fspa.final:
 			terminated = True
@@ -91,9 +94,10 @@ class TltlWrapper(Wrapper):
 
 
 if __name__ == "__main__":
-	#creat env
+	# creat env
 	env = gym.make("MiniGrid-Empty-5x5-v0", render_mode="rgb_array")
-	env = TltlWrapper(env, tltl="p1 X p2", predicates={'p1': PositionPredicate(True, [1, 1]), 'p2': PositionPredicate(True, [2, 2])})
+	env = TltlWrapper(env, tltl="F p1 & X p2", predicates={'p1': PositionPredicate(True, [1, 1]), 'p2': PositionPredicate(True, [2, 2])})
+
 	observation, info = env.reset(seed=42)
 	frames = []
 	obs = env.reset()
@@ -104,9 +108,9 @@ if __name__ == "__main__":
 		if terminated or truncated:
 			observation, info = env.reset()
 	env.close()
-	#TLTLwarpper
-	#reset
-	#for
-	#action
-	#step
-	#test q and state and reward
+# TLTLwarpper
+# reset
+# for
+# action
+# step
+# test q and state and reward

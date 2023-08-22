@@ -429,7 +429,7 @@ class Fsa(Automaton):
         # add virtual state which has incoming edges from all final states
         self.g.add_edges_from([(state, 'virtual') for state in self.final])
         # compute trap states
-        trap_states = set(self.g.nodes_iter())
+        trap_states = set(self.g.nodes())
         trap_states -= set(nx.shortest_path_length(self.g, target='virtual'))
         # remove trap state and virtual state
         self.g.remove_nodes_from(trap_states | set(['virtual']))
