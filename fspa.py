@@ -6,6 +6,8 @@ from typing import Dict
 import re
 from random import choice
 import sympy as sp
+from abc import ABC
+
 
 
 class State:
@@ -30,16 +32,15 @@ class PredicateEvaluationResult:
 
 
 class Predicate:
-    def __init__(self, tmp=0, actionable=False):
+    def __init__(self, actionable=False):
         self.actionable: bool = actionable
-        self.tmp = tmp
         pass
 
     def actionable(self) -> bool:
         return self.actionable
 
     def evaluate(self, s: State) -> PredicateEvaluationResult:
-        return PredicateEvaluationResult(self.tmp)
+        return PredicateEvaluationResult(0)
 
 
 class Fspa(Fsa):
@@ -72,14 +73,24 @@ class Fspa(Fsa):
     def compute_edge_guard(self, edge, s: State):
         return self.compute_guard(edge['guard'], s)
 
-    def compute_node_outgoing(self, q, s: State):
+    def compute_node_outgoing(self, q, s: State,  without_uc_self: bool = False):
         guards = []
         for _, v, d in self.g.out_edges(q, data=True):
+            if without_uc_self:
+                if v == q:
+                    continue
             guards.append(self.compute_edge_guard(d, s))
         # end state
         max_value = max(guards)
         max_index = guards.index(max_value)
         return max_value, max_index
+
+    def compute_node_outgoing_without_uc_self(self, q, s: State):
+        # 1. not self
+        # 2. not trap state
+        # 3. actionable
+        # TODO: add actionable properties to predicate
+        return self.compute_node_outgoing(q, s, True)
 
     def next_states_from_mdp_state(self, q, s: State) -> list:
         return [v for _, v, d in self.g.out_edges(q, data=True) if self.compute_edge_guard(d, s)]
@@ -91,9 +102,8 @@ class Fspa(Fsa):
             return nq[0]
         return None
 
-    def get_init_nodes(self) -> list:
-        ini_nodes = self.init.keys()
-        return [ini_nodes]
+    def get_init_nodes(self) -> set:
+        return set(self.init.keys())
 
     def get_random_non_final_node(self):
         node = choice(list(self.g.nodes))
