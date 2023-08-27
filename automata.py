@@ -45,7 +45,8 @@ spot_output_encoding = "utf-8"
 ltl2dstar_output_encoding = "utf-8"
 
 ltl2ba = "ltl2tgba -B -s -f '{formula}'"
-ltl2fsa = "ltl2tgba -B -D -s -f '{formula}'"
+ltl2fsa = "ltl2tgba -B -DG -C -s -f '{formula}'"
+ltl2fsa_save = "ltl2tgba -B -DG -C -f '{formula}' -d | dot -Tpdf > tgb1.pdf"
 ltl2filt = "ltlfilt -f '{formula}' --lbt"
 ltl2rabin = '''ltl2dstar --ltl2nba="spin:ltl2tgba@-B -D -s" --stutter=no --output-format=native - -'''
 
@@ -86,11 +87,12 @@ Props: {props}
 Alphabet: {alphabet}
 Initial: {init}
 Final: {final}
+Trap: {trap}
 Nodes: {nodes}
 Edges: {edges}
         '''.format(name=self.name, directed=self.directed, multi=self.multi,
                    props=self.props, alphabet=self.alphabet,
-                   init=list(self.init.keys()), final=self.final,
+                   init=list(self.init.keys()), final=self.final, trap=self.trap,
                    nodes=self.g.nodes(data=True),
                    edges=self.g.edges(data=True))
 
@@ -99,6 +101,7 @@ Edges: {edges}
         ret.g = self.g.copy()
         ret.init = dict(self.init) #FIXME: why is init a dict?
         ret.final = set(self.final)
+        ret.trap = set(self.trap)
         return ret
 
     def from_formula(self, formula):
@@ -120,6 +123,7 @@ Edges: {edges}
 
         # Handle (1)
         guard = re.sub(r'\(1\)', 'self.alphabet', guard)
+        guard = re.sub(r'\(true\)', 'self.alphabet', guard)
         # Handle (0)
         guard = re.sub(r'\(0\)', 'set()', guard)
 
@@ -204,6 +208,19 @@ Edges: {edges}
         if nq:
             return nq[0]
         return None # This is reached only for blocking automata
+
+    def trap_states(self):
+        """
+        Get trap states that does not reach to the final states
+        """
+        # add virtual state which has incoming edges from all final states
+        self.g.add_edges_from([(state, 'virtual') for state in self.final])
+        # compute trap states
+        trap_states = set(self.g.nodes())
+        trap_states -= set(nx.shortest_path_length(self.g, target='virtual'))
+        # remove trap state and virtual state
+        self.g.remove_nodes_from(set(['virtual']))
+        return trap_states
 
     def word_from_trajectory(self, trajectory):
         '''
@@ -368,11 +385,14 @@ class Fsa(Automaton):
         # TODO: check that formula is syntactically co-safe
         try: # Execute ltl2tgba and get output
             lines = sp.check_output(shlex.split(ltl2fsa.format(formula=formula))).decode(spot_output_encoding)
+            #sp.check_call(shlex.split(ltl2fsa_save.format(formula=formula)))
         except Exception as ex:
             raise Exception(__name__, "Problem running ltl2tgba: '{}'".format(ex))
+        print(lines)
         automaton_from_spin(self, formula, lines, list(self.props.keys()))
+        self.trap = self.trap_states()
         # We expect a deterministic FSA
-        assert(len(self.init)==1)
+        assert(len(self.init) == 1)
 
     def is_language_empty(self):
         """

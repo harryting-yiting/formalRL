@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import numpy as np
 import numpy.linalg
 from gymnasium.core import Wrapper, ObsType
@@ -6,7 +7,7 @@ from minigrid import minigrid_env
 import numpy as np
 from typing import Any
 import gymnasium as gym
-
+from tools import save_frames_as_gif
 
 class MinigridState(State):
 	def __init__(self, state: minigrid_env):
@@ -36,7 +37,7 @@ class PositionPredicate(Predicate):
 		env: minigrid_env = s.get_state()  # type: minigrid_env
 		current_position = np.array(env.agent_pos)
 		distance = numpy.linalg.norm(self.target_ps - current_position)
-		return PredicateEvaluationResult(distance)
+		return PredicateEvaluationResult(0.2 - distance)
 
 
 class TltlWrapper(Wrapper):
@@ -55,37 +56,31 @@ class TltlWrapper(Wrapper):
 		super().__init__(env)
 		self.fspa = Fspa(predicates=predicates)
 		self.fspa.from_formula(tltl)
-		trap = self.fspa.remove_trap_states()
-		print(trap)
-		print(self.fspa)
-		self.fspa.determinize()
-		print(self.fspa)
 		# wrapper saved variables
-		self.current_p = self.fspa.get_init_nodes()[0]  # current fspa state
+		self.current_p = self.fspa.get_init_node()  # current fspa state
 
 	def reset(
 			self, *, seed: int or None = None, options: dict[str, Any] or None = None
 	) -> tuple[ObsType, dict[str, Any]]:
 		obs, info = super().reset(seed=seed, options=options)
-		self.current_p = self.fspa.get_init_nodes()[0]
+
+		# count the first MDP state
+		self.current_p = self.fspa.get_init_node()
+		self.fspa.update_out_edge_predicates(self.current_p, MinigridState(self.env))
+		self.current_p = self.fspa.get_next_state_from_mdp_state(self.current_p)
 		return self.observation(obs), info
 
 	def step(self, action):
-		obs, reward, terminated, truncated, info = self.env.step(action)
-		print('step')
+		obs, _, _, truncated, info = self.env.step(action)
 		# compute the reward  = the minimal q given next state
-		next_p = self.fspa.next_state_from_mdp_state(self.current_p, MinigridState(self.env))
-		reward, edge_index = self.fspa.compute_node_outgoing_without_uc_self(self.current_p, MinigridState(self.env))
-
-
+		self.fspa.update_out_edge_predicates(self.current_p, MinigridState(self.env))
+		reward = self.fspa.get_reward(self.current_p)
+		next_p = self.fspa.get_next_state_from_mdp_state(self.current_p)
 		# if next_q is final state
-		if next_p in self.fspa.final:
-			terminated = True
-		# if next_q is trap state
-		# elif next_p in self.fspa.trap_state:
-		# 	reward = -100
-		# 	terminated = True
 
+		terminated = next_p in self.fspa.final
+		if next_p in self.fspa.trap:
+			truncated = False
 		self.current_p = next_p
 		return self.observation(obs), reward, terminated, truncated, info
 
@@ -96,18 +91,28 @@ class TltlWrapper(Wrapper):
 if __name__ == "__main__":
 	# creat env
 	env = gym.make("MiniGrid-Empty-5x5-v0", render_mode="rgb_array")
-	env = TltlWrapper(env, tltl="F p1 & X p2", predicates={'p1': PositionPredicate(True, [1, 1]), 'p2': PositionPredicate(True, [2, 2])})
-
+	env = TltlWrapper(env, tltl="F p1 & F p2 & (! p2 U p1)", predicates={'p1': PositionPredicate(True, [1, 1]), 'p2': PositionPredicate(True, [2, 2])})
+	print(env.fspa)
 	observation, info = env.reset(seed=42)
 	frames = []
-	obs = env.reset()
-	for _ in range(1000):
-		action = 0
-		obs, reward, terminated, truncated, info = env.step(action)
+	obs, info = env.reset()
+	print("Init FSPA", obs["fspa_state"])
+	print("Init Position", env.agent_pos)
+	action = [2,2,1,2,2]
+	for i in range(0, len(action)):
 		frames.append(env.render())
+		obs, reward, terminated, truncated, info = env.step(action[i])
+		print('____________________________________')
+		print("fspa state: ", obs["fspa_state"])
+		print("Agent Position", env.agent_pos)
+		print('rewar', reward)
+
 		if terminated or truncated:
 			observation, info = env.reset()
+
+
 	env.close()
+	save_frames_as_gif(frames)
 # TLTLwarpper
 # reset
 # for

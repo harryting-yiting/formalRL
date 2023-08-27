@@ -1,13 +1,8 @@
-# import random
-
-# from model import Model
+#! /usr/bin/python
 from automata import Fsa
 from typing import Dict
 import re
 from random import choice
-import sympy as sp
-from abc import ABC
-
 
 
 class State:
@@ -26,14 +21,13 @@ class PredicateEvaluationResult:
 
     def __invert__(self):
         if self.result == 0:
-            return PredicateEvaluationResult(0.00001)
+            return PredicateEvaluationResult(-0.00001)
         return PredicateEvaluationResult(-self.result)
 
     def get_result(self):
+        if self.result == 0:
+            return 0.000001
         return self.result
-
-    def get_result_binary(self):
-        return self.result > 0
 
 
 class Predicate:
@@ -52,13 +46,13 @@ class Fspa(Fsa):
 
     def __init__(self, name="Fspa", predicates: Dict[str, Predicate] = None, multi=True):
         super().__init__(name, list(predicates.keys()), multi)
-        print(list(predicates.keys()))
         self.PREDICATE_DICT = predicates  # const
 
     def compute_guard(self, guard: str, s: State):
         # A & B | C
         # Handle (1)
         guard = re.sub(r'\(1\)', 'PredicateEvaluationResult(1)', guard)
+        guard = re.sub(r'\(true\)', 'PredicateEvaluationResult(1)', guard)
         # Handle (0)
         guard = re.sub(r'\(0\)', 'PredicateEvaluationResult(0)', guard)
 
@@ -73,47 +67,42 @@ class Fspa(Fsa):
             guard = re.sub(r'\b{}\b'.format(key),
                            "self.PREDICATE_DICT['{}'].evaluate(s)".format(key),
                            guard)
-        print("guard")
-        print(guard)
-        print(eval(guard).get_result_binary())
-        return eval(guard).get_result_binary()
+        return eval(guard).get_result()
 
-    def compute_edge_guard(self, edge, s: State):
-        return self.compute_guard(edge['guard'], s)
-
-    def compute_node_outgoing(self, q, s: State,  without_uc_self: bool = False):
-        guards = []
+    def update_out_edge_predicates(self, q, s: State):
+        """
+        compute edge predicate come out of q, store them at "weight'
+        """
         for _, v, d in self.g.out_edges(q, data=True):
-            if without_uc_self:
-                if v == q:
-                    continue
-            guards.append(self.compute_edge_guard(d, s))
-        # end state
-        max_value = max(guards)
-        max_index = guards.index(max_value)
-        return max_value, max_index
+            d['weight'] = self.compute_guard(d['guard'], s)
+        return
 
-    def compute_node_outgoing_without_uc_self(self, q, s: State):
+    def get_reward(self, q):
         # 1. not self
         # 2. not trap state
-        # 3. actionable
+        # 3. not unactionable
         # TODO: add actionable properties to predicate
-        return self.compute_node_outgoing(q, s, True)
+        if q in self.trap:
+            return -100
 
-    def next_states_from_mdp_state(self, q, s: State) -> list:
-        return [v for _, v, d in self.g.out_edges(q, data=True) if self.compute_edge_guard(d, s)]
+        rewards = []
+        for _, v, d in self.g.out_edges(q, data=True):
+            if v not in (self.trap | set(self.init.keys())):
+                rewards.append(d['weight'])
+        return max(rewards)
 
-    def next_state_from_mdp_state(self, q, s: State):
-        nq = self.next_states_from_mdp_state(q, s)
-        print('length next q')
-        print(len(nq))
+    def get_next_states_from_mdp_state(self, q) -> list:
+        return [v for _, v, d in self.g.out_edges(q, data=True) if d['weight'] > 0]
+
+    def get_next_state_from_mdp_state(self, q):
+        nq = self.get_next_states_from_mdp_state(q)
         assert len(nq) <= 1
         if nq:
             return nq[0]
         return None
 
-    def get_init_nodes(self) -> list:
-        return list(self.init.keys())
+    def get_init_node(self) -> list:
+        return list(self.init.keys())[0]
 
     def get_random_non_final_node(self):
         node = choice(list(self.g.nodes))
@@ -125,6 +114,7 @@ class Fspa(Fsa):
         self.g = fsa.g.copy()
         self.init = dict(fsa.init)
         self.final = set(fsa.final)
+        self.final = fsa.final
         return
 
     def determinize(self):

@@ -59,6 +59,7 @@ class Model(object):
         self.g = graph_type()
         self.directed = directed
         self.multi = multi
+        self.trap = set()
 
     def __eq__(self, other):
         '''Equality testing, which includes data stored on nodes and edges.
@@ -87,7 +88,7 @@ class Model(object):
     def size(self):
         return (self.g.number_of_nodes(), self.g.number_of_edges())
 
-    def visualize(self, edgelabel=None, draw='pygraphviz'):
+    def visualize(self, edgelabel=None, draw='matplotlib'):
         """
         Visualizes a LOMAP system model
         """
