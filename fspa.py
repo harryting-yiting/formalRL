@@ -47,7 +47,6 @@ class Fspa(Fsa):
     def __init__(self, name="Fspa", predicates: Dict[str, Predicate] = None, multi=True):
         super().__init__(name, list(predicates.keys()), multi)
         self.PREDICATE_DICT = predicates  # const
-
     def compute_guard(self, guard: str, s: State):
         # A & B | C
         # Handle (1)

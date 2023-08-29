@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.linalg
-from gymnasium.core import Wrapper, ObsType
+from gymnasium.core import Wrapper, ObsType, ObservationWrapper
 from fspa import Fspa, State, Predicate, PredicateEvaluationResult
 from minigrid import minigrid_env
 import numpy as np
@@ -58,6 +58,9 @@ class TltlWrapper(Wrapper):
 		self.fspa.from_formula(tltl)
 		# wrapper saved variables
 		self.current_p = self.fspa.get_init_node()  # current fspa state
+		self.fspa_all_states = list(self.fspa.get_all_states())
+		new_fspa_state = gym.spaces.Discrete(len(self.fspa_all_states))
+		self.observation_space = gym.spaces.Dict({**self.observation_space.spaces, "fspa": new_fspa_state})
 
 	def reset(
 			self, *, seed: int or None = None, options: dict[str, Any] or None = None
@@ -79,13 +82,16 @@ class TltlWrapper(Wrapper):
 		# if next_q is final state
 
 		terminated = next_p in self.fspa.final
+		if terminated:
+			reward = reward - 0.9 * (self.step_count/self.max_steps)
 		if next_p in self.fspa.trap:
-			truncated = False
+			truncated = True
 		self.current_p = next_p
 		return self.observation(obs), reward, terminated, truncated, info
 
 	def observation(self, obs):
-		return {**obs, "fspa_state": self.current_p}
+		return {**obs, "fspa": self.fspa_all_states.index(self.current_p)}
+
 
 
 if __name__ == "__main__":
@@ -93,24 +99,21 @@ if __name__ == "__main__":
 	env = gym.make("MiniGrid-Empty-5x5-v0", render_mode="rgb_array")
 	env = TltlWrapper(env, tltl="F p1 & F p2 & (! p2 U p1)", predicates={'p1': PositionPredicate(True, [1, 1]), 'p2': PositionPredicate(True, [2, 2])})
 	print(env.fspa)
-	observation, info = env.reset(seed=42)
 	frames = []
 	obs, info = env.reset()
-	print("Init FSPA", obs["fspa_state"])
+	print("Init FSPA", obs["fspa"])
 	print("Init Position", env.agent_pos)
 	action = [2,2,1,2,2]
 	for i in range(0, len(action)):
 		frames.append(env.render())
 		obs, reward, terminated, truncated, info = env.step(action[i])
 		print('____________________________________')
-		print("fspa state: ", obs["fspa_state"])
+		print("fspa state: ", obs["fspa"])
 		print("Agent Position", env.agent_pos)
 		print('rewar', reward)
 
 		if terminated or truncated:
 			observation, info = env.reset()
-
-
 	env.close()
 	save_frames_as_gif(frames)
 # TLTLwarpper

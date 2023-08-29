@@ -296,6 +296,8 @@ Edges: {edges}
             logger.info('Trap states were added.')
         return trap_added
 
+    def get_all_states(self):
+        return self.g.nodes()
     def remove_trap_states(self):
         '''TODO:
         '''
@@ -388,7 +390,6 @@ class Fsa(Automaton):
             #sp.check_call(shlex.split(ltl2fsa_save.format(formula=formula)))
         except Exception as ex:
             raise Exception(__name__, "Problem running ltl2tgba: '{}'".format(ex))
-        print(lines)
         automaton_from_spin(self, formula, lines, list(self.props.keys()))
         self.trap = self.trap_states()
         # We expect a deterministic FSA
