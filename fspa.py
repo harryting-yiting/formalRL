@@ -70,7 +70,7 @@ class Fspa(Fsa):
 
     def update_out_edge_predicates(self, q, s: State):
         """
-        compute edge predicate come out of q, store them at "weight'
+        compute edge predicate come out of q, store them at "weight"
         """
         for _, v, d in self.g.out_edges(q, data=True):
             d['weight'] = self.compute_guard(d['guard'], s)
@@ -82,12 +82,15 @@ class Fspa(Fsa):
         # 3. not unactionable
         # TODO: add actionable properties to predicate
         if q in self.trap:
-            return -100
+            return -10
+
+        if q in self.final:
+            return 50
 
         rewards = []
         for _, v, d in self.g.out_edges(q, data=True):
-            if v not in (self.trap | set(self.init.keys())):
-                rewards.append(d['weight'])
+            if (v not in (self.trap | set(self.init.keys()))) and (v != q):
+                    rewards.append(d['weight'])
         return max(rewards)
 
     def get_next_states_from_mdp_state(self, q) -> list:
