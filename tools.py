@@ -2,7 +2,7 @@ from matplotlib import animation
 import matplotlib.pyplot as plt
 
 
-def save_frames_as_gif(frames, path='./', filename='gym_animation.gif'):
+def save_frames_as_gif(frames, path='./', filename='gym_animation.gif',  fps=1):
     # Mess with this to change frame size
     plt.figure(figsize=(frames[0].shape[1] / 72.0, frames[0].shape[0] / 72.0), dpi=72)
 
@@ -13,4 +13,4 @@ def save_frames_as_gif(frames, path='./', filename='gym_animation.gif'):
         patch.set_data(frames[i])
 
     anim = animation.FuncAnimation(plt.gcf(), animate, frames=len(frames), interval=50)
-    anim.save(path + filename, writer='imagemagick', fps=1)
+    anim.save(path + filename, writer='imagemagick', fps=fps)
